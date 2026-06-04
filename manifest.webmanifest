@@ -1,0 +1,18 @@
+{
+  "name": "The Rampix Metronome",
+  "short_name": "Rampix",
+  "description": "A black-and-white indie rock metronome with saved song tempos.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

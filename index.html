@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#050505">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Rampix">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>The Rampix Metronome</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f8f8f2;
+        --paper: #f6f2e8;
+        --black: #050505;
+        --muted: #aaa39a;
+        --line: #2c2a27;
+        --panel: #0d0d0d;
+        --panel-strong: #171615;
+        --brand: #f8f8f2;
+        --brand-dark: #d8d2c5;
+        --accent: #ffffff;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Arial Narrow", "Roboto Condensed", Impact, Haettenschweiler, ui-sans-serif, system-ui, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 12%, rgba(246, 242, 232, 0.12), transparent 22%),
+          repeating-linear-gradient(115deg, transparent 0 16px, rgba(255, 255, 255, 0.035) 16px 18px),
+          linear-gradient(145deg, #050505 0%, #11100f 48%, #050505 100%);
+        overflow-x: hidden;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          repeating-radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 5px),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 7px);
+        mix-blend-mode: screen;
+        opacity: 0.34;
+        z-index: 0;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .shell {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 22px 0;
+        position: relative;
+        z-index: 1;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 14px;
+        padding: 8px 0 10px;
+        border-bottom: 3px solid var(--paper);
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: clamp(2.5rem, 6vw, 4.7rem);
+        line-height: 0.82;
+        text-transform: uppercase;
+        max-width: 980px;
+        text-shadow: 5px 5px 0 #000, 8px 8px 0 rgba(246, 242, 232, 0.2);
+      }
+
+      .subtitle {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .stage {
+        display: grid;
+        grid-template-columns: minmax(0, 1.12fr) minmax(310px, 0.88fr);
+        gap: 20px;
+        align-items: start;
+      }
+
+      .metronome,
+      .songs {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 42%),
+          var(--panel);
+        border: 2px solid var(--paper);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .metronome {
+        padding: clamp(16px, 3vw, 26px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .metronome::before {
+        content: "RAMPIX";
+        position: absolute;
+        top: 16px;
+        right: -34px;
+        color: rgba(246, 242, 232, 0.08);
+        font-size: clamp(4rem, 12vw, 9rem);
+        font-weight: 900;
+        line-height: 1;
+        transform: rotate(8deg);
+        pointer-events: none;
+      }
+
+      .tempo-readout {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+      }
+
+      .bpm-control {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .bpm-input {
+        width: min(100%, 280px);
+        border: 0;
+        border-bottom: 7px solid var(--paper);
+        background: transparent;
+        color: var(--ink);
+        font-size: clamp(4.6rem, 10vw, 6.9rem);
+        font-weight: 900;
+        line-height: 0.9;
+        text-align: center;
+        outline: none;
+        text-shadow: 4px 4px 0 #000;
+      }
+
+      .bpm-label {
+        color: var(--paper);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .nudge-stack {
+        display: grid;
+        gap: 8px;
+      }
+
+      .icon-button {
+        width: 52px;
+        height: 52px;
+        display: inline-grid;
+        place-items: center;
+        border: 2px solid var(--paper);
+        border-radius: 4px;
+        background: var(--paper);
+        color: var(--black);
+        font-size: 1.4rem;
+        font-weight: 900;
+        box-shadow: 5px 5px 0 #000;
+      }
+
+      .icon-button:hover {
+        transform: translate(2px, 2px);
+        box-shadow: 3px 3px 0 #000;
+      }
+
+      .beat-ring {
+        width: min(100%, 270px);
+        aspect-ratio: 1;
+        margin: 16px auto;
+        border: 16px double var(--paper);
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle, var(--paper) 0 44%, transparent 45% 53%, var(--black) 54% 100%),
+          conic-gradient(from 0deg, var(--paper), #171615, var(--paper), #171615, var(--paper));
+        transition: transform 90ms ease, border-color 90ms ease, box-shadow 90ms ease;
+      }
+
+      .beat-ring.active {
+        transform: scale(1.025);
+        border-color: var(--brand);
+        box-shadow: 0 0 0 14px rgba(246, 242, 232, 0.12), 0 0 40px rgba(255, 255, 255, 0.22);
+      }
+
+      .beat-ring.accent {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 14px rgba(246, 242, 232, 0.2), 0 0 56px rgba(255, 255, 255, 0.32);
+      }
+
+      .beat-number {
+        font-size: clamp(3.4rem, 8vw, 5rem);
+        font-weight: 900;
+        color: var(--black);
+      }
+
+      .primary-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .primary-button,
+      .secondary-button {
+        min-height: 48px;
+        border-radius: 4px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .primary-button {
+        border: 2px solid var(--paper);
+        background: var(--paper);
+        color: var(--black);
+        box-shadow: 6px 6px 0 #000;
+      }
+
+      .primary-button:hover {
+        background: var(--brand-dark);
+      }
+
+      .secondary-button {
+        border: 2px solid var(--paper);
+        background: var(--black);
+        color: var(--ink);
+        box-shadow: 6px 6px 0 #000;
+      }
+
+      .settings {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--paper);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      input,
+      select {
+        min-height: 44px;
+        width: 100%;
+        border: 2px solid var(--paper);
+        border-radius: 4px;
+        background: #090909;
+        color: var(--paper);
+        padding: 8px 10px;
+      }
+
+      input::placeholder {
+        color: #827b72;
+      }
+
+      input[type="number"] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+      }
+
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        appearance: none;
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      .songs {
+        overflow: hidden;
+      }
+
+      .songs-head {
+        padding: 16px 18px;
+        border-bottom: 2px solid var(--paper);
+        background: var(--panel-strong);
+      }
+
+      .songs-head h2 {
+        font-size: clamp(1.8rem, 4vw, 3rem);
+        text-transform: uppercase;
+      }
+
+      .song-form {
+        display: grid;
+        grid-template-columns: 1fr 86px;
+        gap: 10px;
+        padding: 14px 18px;
+        border-bottom: 2px solid var(--paper);
+        background:
+          repeating-linear-gradient(-6deg, transparent 0 13px, rgba(246, 242, 232, 0.045) 13px 15px),
+          var(--panel);
+      }
+
+      .song-form .wide {
+        grid-column: 1 / -1;
+      }
+
+      .song-form button {
+        min-height: 44px;
+        border: 2px solid var(--paper);
+        border-radius: 4px;
+        background: var(--paper);
+        color: var(--black);
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .song-list {
+        display: grid;
+        max-height: 390px;
+        overflow: auto;
+      }
+
+      .song {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .song > div:first-child {
+        min-width: 0;
+      }
+
+      .song:last-child {
+        border-bottom: 0;
+      }
+
+      .song-title {
+        margin: 0;
+        color: var(--paper);
+        font-weight: 900;
+        text-transform: uppercase;
+        overflow-wrap: anywhere;
+      }
+
+      .song-meta {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .song-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .song-actions button {
+        width: 40px;
+        height: 40px;
+        border: 2px solid var(--paper);
+        border-radius: 4px;
+        background: var(--paper);
+        color: var(--black);
+        font-weight: 900;
+      }
+
+      .empty {
+        padding: 26px 20px;
+        color: var(--muted);
+        text-align: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 0.04em;
+      }
+
+      @media (max-width: 820px) {
+        .stage {
+          grid-template-columns: 1fr;
+        }
+
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .shell {
+          width: min(100% - 20px, 1120px);
+          padding: 16px 0;
+        }
+
+        .tempo-readout,
+        .settings,
+        .primary-actions,
+        .song-form {
+          grid-template-columns: 1fr;
+        }
+
+        .bpm-control {
+          justify-content: center;
+        }
+
+        .bpm-input {
+          width: 210px;
+        }
+
+        h1 {
+          font-size: clamp(2.2rem, 14vw, 4.1rem);
+        }
+
+        .beat-ring {
+          border-width: 14px;
+          width: min(100%, 330px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div>
+          <h1>The Rampix Metronome</h1>
+          <p class="subtitle">Black-and-white tempo machine for loud rooms.</p>
+        </div>
+      </header>
+
+      <section class="stage" aria-label="Metronome and song list">
+        <div class="metronome">
+          <div class="tempo-readout">
+            <div>
+              <label for="bpm">Tempo</label>
+              <div class="bpm-control">
+                <input class="bpm-input" id="bpm" type="number" min="30" max="260" value="120" inputmode="numeric">
+                <span class="bpm-label">BPM</span>
+              </div>
+            </div>
+            <div class="nudge-stack" aria-label="Tempo controls">
+              <button class="icon-button" id="increase" type="button" title="Increase BPM">+</button>
+              <button class="icon-button" id="decrease" type="button" title="Decrease BPM">-</button>
+            </div>
+          </div>
+
+          <div class="beat-ring" id="beatRing" aria-live="polite">
+            <span class="beat-number" id="beatNumber">1</span>
+          </div>
+
+          <div class="primary-actions">
+            <button class="primary-button" id="toggle" type="button">Start</button>
+            <button class="secondary-button" id="tap" type="button">Tap Tempo</button>
+          </div>
+
+          <div class="settings">
+            <label for="beatsPerBar">
+              Beats
+              <select id="beatsPerBar">
+                <option value="1">1/4</option>
+                <option value="2">2/4</option>
+                <option value="3">3/4</option>
+                <option value="4" selected>4/4</option>
+                <option value="5">5/4</option>
+                <option value="6">6/8</option>
+                <option value="7">7/8</option>
+              </select>
+            </label>
+            <label for="subdivision">
+              Subdivision
+              <select id="subdivision">
+                <option value="1" selected>Quarter</option>
+                <option value="2">Eighth</option>
+                <option value="3">Triplet</option>
+                <option value="4">Sixteenth</option>
+              </select>
+            </label>
+            <label for="volume">
+              Volume
+              <input id="volume" type="range" min="0" max="1" value="0.75" step="0.05">
+            </label>
+          </div>
+        </div>
+
+        <aside class="songs">
+          <div class="songs-head">
+            <h2>Song List</h2>
+            <p class="subtitle">Load a song tempo with one click.</p>
+          </div>
+
+          <form class="song-form" id="songForm">
+            <label class="wide" for="songTitle">
+              Song
+              <input id="songTitle" type="text" placeholder="Song title" required>
+            </label>
+            <label for="songBpm">
+              BPM
+              <input id="songBpm" type="number" min="30" max="260" value="120" required>
+            </label>
+            <label for="songBeats">
+              Beats
+              <select id="songBeats">
+                <option value="1">1/4</option>
+                <option value="2">2/4</option>
+                <option value="3">3/4</option>
+                <option value="4" selected>4/4</option>
+                <option value="5">5/4</option>
+                <option value="6">6/8</option>
+                <option value="7">7/8</option>
+              </select>
+            </label>
+            <button class="wide" type="submit">Save Song</button>
+          </form>
+
+          <div class="song-list" id="songList"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const bpmInput = document.querySelector("#bpm");
+      const songBpmInput = document.querySelector("#songBpm");
+      const beatNumber = document.querySelector("#beatNumber");
+      const beatRing = document.querySelector("#beatRing");
+      const toggleButton = document.querySelector("#toggle");
+      const tapButton = document.querySelector("#tap");
+      const increaseButton = document.querySelector("#increase");
+      const decreaseButton = document.querySelector("#decrease");
+      const beatsPerBarSelect = document.querySelector("#beatsPerBar");
+      const subdivisionSelect = document.querySelector("#subdivision");
+      const volumeInput = document.querySelector("#volume");
+      const songForm = document.querySelector("#songForm");
+      const songTitleInput = document.querySelector("#songTitle");
+      const songBeatsSelect = document.querySelector("#songBeats");
+      const songList = document.querySelector("#songList");
+
+      const songStorageKey = "drummer-metronome-songs";
+      let audioContext;
+      let timerId;
+      let currentBeat = 0;
+      let isRunning = false;
+      let tapTimes = [];
+      let songs = JSON.parse(localStorage.getItem(songStorageKey) || "[]");
+
+      function clampBpm(value) {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isNaN(parsed)) return 120;
+        return Math.min(260, Math.max(30, parsed));
+      }
+
+      function setBpm(value) {
+        const bpm = clampBpm(value);
+        bpmInput.value = bpm;
+        songBpmInput.value = bpm;
+        if (isRunning) restart();
+      }
+
+      function getIntervalMs() {
+        const bpm = clampBpm(bpmInput.value);
+        const subdivision = Number.parseInt(subdivisionSelect.value, 10);
+        return 60000 / bpm / subdivision;
+      }
+
+      function ensureAudioContext() {
+        if (!audioContext) {
+          audioContext = new AudioContext();
+        }
+        return audioContext;
+      }
+
+      function clickSound(isAccent, isSubdivision) {
+        const context = ensureAudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const now = context.currentTime;
+        const volume = Number.parseFloat(volumeInput.value);
+
+        oscillator.type = "square";
+        oscillator.frequency.value = isAccent ? 1300 : isSubdivision ? 660 : 920;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(volume, now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(now);
+        oscillator.stop(now + 0.07);
+      }
+
+      function pulseBeat(isAccent) {
+        beatRing.classList.remove("active", "accent");
+        void beatRing.offsetWidth;
+        beatRing.classList.add(isAccent ? "accent" : "active");
+        window.setTimeout(() => beatRing.classList.remove("active", "accent"), 90);
+      }
+
+      function tick() {
+        const beatsPerBar = Number.parseInt(beatsPerBarSelect.value, 10);
+        const subdivision = Number.parseInt(subdivisionSelect.value, 10);
+        const stepInBar = currentBeat % (beatsPerBar * subdivision);
+        const displayBeat = Math.floor(stepInBar / subdivision) + 1;
+        const isPrimaryBeat = stepInBar % subdivision === 0;
+        const isAccent = stepInBar === 0;
+
+        beatNumber.textContent = displayBeat;
+        clickSound(isAccent, !isPrimaryBeat);
+        pulseBeat(isAccent);
+        currentBeat += 1;
+      }
+
+      function start() {
+        ensureAudioContext();
+        isRunning = true;
+        currentBeat = 0;
+        toggleButton.textContent = "Stop";
+        tick();
+        timerId = window.setInterval(tick, getIntervalMs());
+      }
+
+      function stop() {
+        isRunning = false;
+        window.clearInterval(timerId);
+        toggleButton.textContent = "Start";
+      }
+
+      function restart() {
+        stop();
+        start();
+      }
+
+      function saveSongs() {
+        localStorage.setItem(songStorageKey, JSON.stringify(songs));
+      }
+
+      function renderSongs() {
+        if (!songs.length) {
+          songList.innerHTML = '<div class="empty">No songs saved yet.</div>';
+          return;
+        }
+
+        songList.innerHTML = songs.map((song, index) => `
+          <article class="song">
+            <div>
+              <p class="song-title">${escapeHtml(song.title)}</p>
+              <p class="song-meta">${song.bpm} BPM · ${song.beats}/4</p>
+            </div>
+            <div class="song-actions">
+              <button type="button" data-load="${index}" title="Load song">▶</button>
+              <button type="button" data-delete="${index}" title="Delete song">×</button>
+            </div>
+          </article>
+        `).join("");
+      }
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      toggleButton.addEventListener("click", () => {
+        if (isRunning) {
+          stop();
+        } else {
+          start();
+        }
+      });
+
+      increaseButton.addEventListener("click", () => setBpm(clampBpm(bpmInput.value) + 1));
+      decreaseButton.addEventListener("click", () => setBpm(clampBpm(bpmInput.value) - 1));
+      bpmInput.addEventListener("change", () => setBpm(bpmInput.value));
+      subdivisionSelect.addEventListener("change", () => {
+        if (isRunning) restart();
+      });
+
+      beatsPerBarSelect.addEventListener("change", () => {
+        currentBeat = 0;
+      });
+
+      tapButton.addEventListener("click", () => {
+        const now = performance.now();
+        tapTimes = tapTimes.filter((time) => now - time < 2500);
+        tapTimes.push(now);
+        if (tapTimes.length >= 2) {
+          const gaps = tapTimes.slice(1).map((time, index) => time - tapTimes[index]);
+          const averageGap = gaps.reduce((total, gap) => total + gap, 0) / gaps.length;
+          setBpm(Math.round(60000 / averageGap));
+        }
+      });
+
+      songForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const title = songTitleInput.value.trim();
+        if (!title) return;
+
+        songs.unshift({
+          title,
+          bpm: clampBpm(songBpmInput.value),
+          beats: Number.parseInt(songBeatsSelect.value, 10)
+        });
+        songTitleInput.value = "";
+        saveSongs();
+        renderSongs();
+      });
+
+      songList.addEventListener("click", (event) => {
+        const loadIndex = event.target.dataset.load;
+        const deleteIndex = event.target.dataset.delete;
+
+        if (loadIndex !== undefined) {
+          const song = songs[Number.parseInt(loadIndex, 10)];
+          setBpm(song.bpm);
+          beatsPerBarSelect.value = String(song.beats);
+          songBeatsSelect.value = String(song.beats);
+          currentBeat = 0;
+        }
+
+        if (deleteIndex !== undefined) {
+          songs.splice(Number.parseInt(deleteIndex, 10), 1);
+          saveSongs();
+          renderSongs();
+        }
+      });
+
+      setBpm(bpmInput.value);
+      renderSongs();
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js").catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>
